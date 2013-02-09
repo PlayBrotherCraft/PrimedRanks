@@ -1,0 +1,104 @@
+*:/rank [$] = >>>
+	include('util.ms')
+	@args = parse_args($)
+	if(array_size(@args) == 0) {
+		@args[0] = 'nil'
+	}
+
+	proc(_args_count, @args, @num, @correct,
+		if(array_size(@args) != @num) {
+			die(color('Red'). 'Incorrect usage. Use:' @correct)
+		}
+	)
+
+	# /rank
+	if(@args[0] == 'nil') {
+		if(player() == '~console') {
+			die(color('Red'). 'Player Context Required.')
+		}
+		@joined = _get_time('join')
+		@play = _get_time('play')
+		@play += time() - @joined
+		_store_time('play', @play)
+		_store_time('join', time())
+		@total = _get_time('total')
+		_rankUp()
+		msg(color('Green'). 'You have played for' _format_time(@play))
+		if(_get_time('bonus') != 0) { 
+			die(color('Green'). 'You have a total ranktime of' _format_time(@total))
+		}
+
+	# /rank bonus add/remove [amount] [player]
+	} else if(array_index_exists(@args, 1) && (@args[1] == 'add' || @args[1] == 'remove' || @args[1] == 'set') && @args[0] == 'bonus') {
+		_args_count(@args, 4, '/rank bonus' @args[1] '<amount> <player>')
+		if(!_perm('add')) {
+			die(color('Red'). 'You don\'t have permission to use /rank' @args[1])
+		}
+
+		if(!is_integral(@args[2])) {
+			die(color('Red'). 'Incorrect amount of time:' @args[2])
+		}
+
+		try(
+			@p = player(@args[3]),
+			die(color('Red'). 'That player is not online:' @args[3])
+		)
+
+		@joined = _get_time('join', @p)
+		@play = _get_time('play', @p)
+		@bonus = _get_time('bonus', @p)
+
+
+		@play += time() - @joined
+		if(@args[1] == 'add') {
+			@bonus += @args[2] * 1000
+		} else if(@args[1] == 'remove') {
+			@bonus -= @args[2] * 1000
+		} else if(@args[1] == 'set') {
+			@bonus = @args[2] * 1000
+		}
+
+		_store_time('join', time(), @p)
+		_store_time('play', @play, @p)
+		_store_time('bonus', @bonus, @p)
+
+		_rankUp(@p)
+		if(@args[1] == 'add') {
+			die(color('Green'). 'You added' _format_time(@args[2] * 1000). 'to' @p. '\'s bonus time.' @p 'now has' _format_time(@play + @bonus). 'total time.')
+		} else if(@args[1] == 'remove') {
+			die(color('Green'). 'You removed' _format_time(@args[2] * 1000). 'from' @p. '\'s bonus time.' @p 'now has' _format_time(@play + @bonus). 'total time.')
+		} else if(@args[1] == 'set') {
+			die(color('Green'). 'You set' @p 'bonus time to' _format_time(@args[2] * 1000). '.' @p 'now has' _format_time(@play + @bonus). 'total time')
+		}
+
+		# /rank check
+	} else if(@args[0] == 'check' && array_index_exists(@args, 2) && (@args[2] == 'bonus' || @args[2] == 'play')) {
+		_args_count(@args, 3, '/rank check <player> <bonus/play>')
+		if(!_perm('check')) {
+			die(color('Red'). 'You don\'t have permission to use /rank check')
+		}
+
+		try(
+			@p = player(@args[1]),
+			@p = @args[1]
+		)
+
+		if(@args[2] == bonus) {
+			if(!_has_time('bonus', @p) || _get_time('bonus', @p) == 0) {
+				die(color('red'). 'Player' @p 'doesnt have bonus-time.')
+			}
+			@time = _get_time('bonus', @p)
+		} else {
+			if(!_has_time('play', @p) || _get_time('play', @p) == 0) {
+				die(color('red'). 'Player' @p 'doesnt have play-time.')
+			}
+			@time = _get_time('play', @p)
+		}
+
+		die(color('Green'). @p 'has' _format_time(@time). 'of' @args[2]. '-time')
+	}
+<<<
+
+*:/debug = >>>
+	msg(get_values(aczchef))
+<<<

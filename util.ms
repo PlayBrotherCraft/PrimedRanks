@@ -1,0 +1,169 @@
+# persistance -
+# 	aczchef.primedrank.
+#		<player>.
+#			time.
+#				join: <nanotime>
+#				play: <nanotime>
+#				bonus: <nanotime>
+
+proc(_groups, @g = 'null',
+	@groups = array(
+		'default': array(
+			'pex': 'default',
+			'time': 0),
+		'player': array(
+			'pex': 'player',
+			'time': 5),
+		'trusted': array(
+			'pex': 'trusted',
+			'time': 24),
+		'veteran': array(
+			'pex': 'veteran',
+			'time': 120)
+	)
+	if(@g == 'null') {
+		return(@groups)
+	} else if(array_contains(@groups, @g)) {
+		return(@groups[@g])
+	} else {
+		console(color('Red'). 'Invalid Group:'. @g)
+		die(color('Red'). 'Invalid Group:'. @g)
+	}
+)
+
+proc(_get_time, @t, @p = player(),
+	@n = 'aczchef.primedrank.' .@p. '.time.'
+	if(@t == 'total') {
+		if(!_has_time('play', @p)) {
+			console(color('Red'). 'Player doesnt have a totaltime.')
+			die()
+		} else {
+			@time = get_value(@n. 'play')
+			if(_has_time('bonus', @p)) {
+				@time += get_value(@n. 'bonus')
+			}
+		}
+	} else if(@t == 'bonus' || @t == 'join' || @t == 'play') {
+		if(!_has_time(@t, @p)) {
+			console(color('Red'). 'Player doesnt have a' @t. 'time')
+			die()
+		} else {
+			@time = get_value(@n. @t)
+		}
+	} else {
+		console(color('Red'). 'Invalid Type:' @t)
+		die(color('Red'). 'Invalid Type:' @t)
+	}
+	return(@time)
+)
+
+proc(_store_time, @t, @time, @p = player(),
+	@n = 'aczchef.primedrank.' .@p. '.time.'
+	if(@t == 'join' || @t == 'play' || @t == 'bonus') {
+		store_value(@n. @t, @time)
+	} else {
+		console(color('Red'). 'Invalid type:' @t)
+		die(color('Red'). 'Invalid type:' @t)
+	}
+)
+
+proc(_has_time, @t, @p = player(),
+	@n = 'aczchef.primedrank.' .@p. '.time.'
+	if(@t == 'join' || @t == 'play' || @t == 'bonus') {
+		return(has_value(@n. @t))
+	} else {
+		console(color('Red'). 'Invalid type:' @t)
+		die(color('Red'). 'Invalid type:' @t)
+	}
+)
+
+proc(_clear_jointime, @p = player(),
+	clear_value('aczchef.primedrank.' .@p. '.time.join')
+)
+
+proc(_format_time, @seconds,
+	@seconds /= 1000
+
+	@periods = array('second', 'minute', 'hour', 'day', 'week', 'month', 'year', 'decade')
+	@duration = array('60', '60', '24', '7', '4.35', '12', '10')
+	@intervals = array()
+
+	while(@seconds > 1,
+		for(@j = 0, @j <= array_size(@duration) - 1 && @seconds >= @duration[@j], @j++) {
+			@seconds /= @duration[@j]
+		}
+
+		@time = floor(@seconds)
+		@seconds -= @time
+
+		if(@time != 1) {
+			@periods[@j] .= 's'
+		}
+
+		for(@i = 0, @i < @j, @i++) {
+			@seconds *= @duration[@i]
+		}
+
+		array_push(@intervals, @time @periods[@j])
+	)
+
+	foreach(@intervals, @interval) {
+		@message .= @interval .' ' 
+	}
+
+	return(@message)
+)
+
+proc(_perm, @perm, @p = player(),
+	if(has_permission('primed.rank.' .@perm) || pisop(@p)) {
+		return(true)
+	} else {
+		return(false)
+	}
+)
+
+proc(_rankUp, @p = player(),
+	@groups = _groups()
+	@time = _get_time('total', @p)
+	ifelse(
+		@time >= 3600000 * @groups['veteran']['time'],
+			tmsg(@p, colorize('&a[&cPrimedRank&a]&7 You are rank Veteran'))
+			if(!array_contains(pgroup(@p), @groups['veteran']['pex'])) {
+				foreach(@groups, @group) {
+					runas(~console, '/pex user' @p 'group remove' @group['pex'])
+				} 
+				runas(~console, '/pex user' @p 'group add' @groups['veteran']['pex'])
+				broadcast(colorize('&a[&cPrimedRank&a]&7' @p 'has been promoted to Veteran. Congrats!'))
+			}
+			,
+		@time >= 3600000 * @groups['trusted']['time'],
+			tmsg(@p, colorize('&a[&cPrimedRank&a]&7 You are rank Trusted'))
+			if(!array_contains(pgroup(@p), @groups['trusted']['pex'])) {
+				foreach(@groups, @group) {
+					runas(~console, '/pex user' @p 'group remove' @group['pex'])
+				}
+				runas(~console, '/pex user' @p 'group add' @groups['trusted']['pex'])
+				broadcast(colorize('&a[&cPrimedRank&a]&7' @p 'has been promoted to Trusted. Congrats!'))
+			}
+			,
+		@time >= 3600000 * @groups['player']['time'],
+			tmsg(@p, colorize('&a[&cPrimedRank&a]&7 You are rank Player'))
+			if(!array_contains(pgroup(@p), @groups['player']['pex'])) {
+				foreach(@groups, @group) {
+					runas(~console, '/pex user' @p 'group remove' @group['pex'])
+				}
+				runas(~console, '/pex user' @p 'group add' @groups['player']['pex'])
+				broadcast(colorize('&a[&cPrimedRank&a]&7' @p 'has been promoted to Player. Congrats!'))
+			}
+			,
+		@time >= 3600000 * @groups['default']['time'],
+			tmsg(@p, colorize('&a[&cPrimedRank&a]&7 You are rank Default'))
+			if(!array_contains(pgroup(@p), @groups['default']['pex'])) {
+				foreach(@groups, @group) {
+					runas(~console, '/pex user' @p 'group remove' @group['pex'])
+				}
+				runas(~console, '/pex user' @p 'group add default')
+				broadcast(colorize('&a[&cPrimedRank&a]&7' @p 'has been promoted to Default. Congrats!'))
+			}
+	)
+)
